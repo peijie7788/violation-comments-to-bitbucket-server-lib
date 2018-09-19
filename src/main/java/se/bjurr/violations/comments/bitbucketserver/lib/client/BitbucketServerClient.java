@@ -16,6 +16,7 @@ import java.util.List;
 import se.bjurr.violations.comments.bitbucketserver.lib.client.BitbucketServerInvoker.Method;
 import se.bjurr.violations.comments.bitbucketserver.lib.client.model.BitbucketServerComment;
 import se.bjurr.violations.comments.bitbucketserver.lib.client.model.BitbucketServerDiffResponse;
+import se.bjurr.violations.comments.bitbucketserver.lib.client.model.BitbucketServerTask;
 import se.bjurr.violations.comments.lib.ViolationsLogger;
 
 public class BitbucketServerClient {
@@ -179,7 +180,7 @@ public class BitbucketServerClient {
               + "/comments?path="
               + encodedChangedFile
               + "&limit=999999";
-      String jsonPath = "$.values[*]";
+      String jsonPath = "$.value*s[]";
 
       final String json = doInvokeUrl(url, Method.GET, null);
       List<LinkedHashMap<?, ?>> parsed = null;
@@ -202,6 +203,10 @@ public class BitbucketServerClient {
     }
   }
 
+  public List<BitbucketServerTask> commentTasks(final Integer commentId, final Integer commentVersion){
+
+  }
+
   public BitbucketServerDiffResponse pullRequestDiff() {
     final String url = getBitbucketServerPullRequestBase() + "/diff?limit=999999";
     final String json = doInvokeUrl(url, BitbucketServerInvoker.Method.GET, null);
@@ -218,6 +223,15 @@ public class BitbucketServerClient {
   }
 
   public void pullRequestRemoveComment(final Integer commentId, final Integer commentVersion) {
+
+
+
+    List<BitbucketServerTask> tasks =
+
+    for(BitbucketServerTask task : tasks){
+      removeTask(task.getId());
+    }
+
     doInvokeUrl(
         getBitbucketServerPullRequestBase()
             + "/comments/"
@@ -226,6 +240,15 @@ public class BitbucketServerClient {
             + commentVersion,
         BitbucketServerInvoker.Method.DELETE,
         null);
+  }
+
+  public void removeTask(final Integer taskId){
+    doInvokeUrl(
+            getBitbucketServerApiBase()
+                    + "/tasks/"
+                    + taskId,
+            BitbucketServerInvoker.Method.DELETE,
+            null);
   }
 
   public void commentCreateTask(
@@ -262,7 +285,31 @@ public class BitbucketServerClient {
     final Integer version = (Integer) parsed.get("version");
     final String text = (String) parsed.get("text");
     final Integer id = (Integer) parsed.get("id");
+//    final List<BitbucketServerTask> tasks = (List<BitbucketServerTask>) parsed.get("tasks");
+//    final List<BitbucketServerComment> subComments = (List<BitbucketServerComment>) parsed.get("comments");
+    final String tasksJson = (String) parsed.get("tasks");
 
-    return new BitbucketServerComment(version, text, id);
+//    List<LinkedHashMap<?, ?>> parsed = null;
+//    try {
+//      parsed = JsonPath.read(parsed, jsonPath);
+//    } catch (final Exception e) {
+//      throw new RuntimeException(
+//              "Unable to parse diff response from " + url + " using " + jsonPath + "\n\n" + json, e);
+//    }
+
+    final List<BitbucketServerTask> tasks = toBitbucketServerTaskList()
+
+
+    return new BitbucketServerComment(version, text, id, tasks, subComments);
+  }
+
+  private BitbucketServerTask toBitbucketServerTask(LinkedHashMap<?, ?> parsed){
+    final Integer id = (Integer) parsed.get("id");
+    final String text = (String) parsed.get("text");
+    return new BitbucketServerTask(id, text);
+  }
+
+  private List<BitbucketServerTask> toBitbucketServerTaskList(LinkedHashMap<?, ?> parsed){
+
   }
 }
