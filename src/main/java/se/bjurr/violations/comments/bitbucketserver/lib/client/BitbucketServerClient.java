@@ -11,8 +11,11 @@ import com.google.gson.Gson;
 import com.jayway.jsonpath.JsonPath;
 import java.io.File;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+
+import net.minidev.json.JSONArray;
 import se.bjurr.violations.comments.bitbucketserver.lib.client.BitbucketServerInvoker.Method;
 import se.bjurr.violations.comments.bitbucketserver.lib.client.model.BitbucketServerComment;
 import se.bjurr.violations.comments.bitbucketserver.lib.client.model.BitbucketServerDiffResponse;
@@ -226,10 +229,21 @@ public class BitbucketServerClient {
 
 
 
-    List<BitbucketServerTask> tasks =
+    final String json = doInvokeUrl(
+            getBitbucketServerPullRequestBase()
+                    + "/comments/"
+                    + commentId
+                    + "?version="
+                    + commentVersion,
+            BitbucketServerInvoker.Method.GET,
+            null);
+
+    final BitbucketServerComment bitbucketServerComment = new Gson().fromJson(json, BitbucketServerComment.class);
+
+    List<BitbucketServerTask> tasks = bitbucketServercomment
 
     for(BitbucketServerTask task : tasks){
-      removeTask(task.getId());
+      removeTask(task);
     }
 
     doInvokeUrl(
@@ -242,11 +256,11 @@ public class BitbucketServerClient {
         null);
   }
 
-  public void removeTask(final Integer taskId){
+  public void removeTask(final BitbucketServerTask task){
     doInvokeUrl(
             getBitbucketServerApiBase()
                     + "/tasks/"
-                    + taskId,
+                    + task.getId(),
             BitbucketServerInvoker.Method.DELETE,
             null);
   }
@@ -285,9 +299,9 @@ public class BitbucketServerClient {
     final Integer version = (Integer) parsed.get("version");
     final String text = (String) parsed.get("text");
     final Integer id = (Integer) parsed.get("id");
-//    final List<BitbucketServerTask> tasks = (List<BitbucketServerTask>) parsed.get("tasks");
-//    final List<BitbucketServerComment> subComments = (List<BitbucketServerComment>) parsed.get("comments");
-    final String tasksJson = (String) parsed.get("tasks");
+
+    final JSONArray jsonArrayTasks = (JSONArray) parsed.get("tasks");
+
 
 //    List<LinkedHashMap<?, ?>> parsed = null;
 //    try {
@@ -297,7 +311,7 @@ public class BitbucketServerClient {
 //              "Unable to parse diff response from " + url + " using " + jsonPath + "\n\n" + json, e);
 //    }
 
-    final List<BitbucketServerTask> tasks = toBitbucketServerTaskList()
+    final List<BitbucketServerTask> tasks = toBitbucketServerTaskList((List<LinkedHashMap<?, ?>>)jsonArrayTasks)
 
 
     return new BitbucketServerComment(version, text, id, tasks, subComments);
@@ -309,7 +323,14 @@ public class BitbucketServerClient {
     return new BitbucketServerTask(id, text);
   }
 
-  private List<BitbucketServerTask> toBitbucketServerTaskList(LinkedHashMap<?, ?> parsed){
+  private List<BitbucketServerTask> toBitbucketServerTaskList(List<LinkedHashMap<?, ?>> parsed){
 
+    List<BitbucketServerTask> bitbucketServerTaskList = new ArrayList<>();
+
+    for(LinkedHashMap<?, ?> parsedTask : parsed){
+      bitbucketServerTaskList.add(toBitbucketServerTask(parsedTask));
+    }
+
+    return bitbucketServerTaskList;
   }
 }
